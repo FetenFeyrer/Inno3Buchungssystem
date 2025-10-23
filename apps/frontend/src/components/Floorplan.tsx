@@ -3,6 +3,8 @@
 import * as React from 'react'
 import FloorPlanSVG, { SelectionMode, ZoneId } from './FloorPlanSVG'
 import { useToast } from '@/components/Toast'
+import TimeSelector, { TimeRange } from './TimeSelector'
+import BookingTimeline, { Booking } from './BookingTimeline'
 
 function SelectionControl({
   value,
@@ -93,6 +95,32 @@ export default function Floorplan() {
   const [mode, setMode] = React.useState<SelectionMode>('zone')
   const [zones, setZones] = React.useState<Set<ZoneId>>(new Set())
   const [desks, setDesks] = React.useState<Set<string>>(new Set())
+  
+  // New state for time selection
+  const [timeRange, setTimeRange] = React.useState<TimeRange>({
+    start: '09:00',
+    end: '17:00'
+  })
+
+  // Mock bookings data - replace with actual API call
+  const [bookings] = React.useState<Booking[]>([
+    {
+      id: '1',
+      start: '08:00',
+      end: '12:00',
+      type: 'zone',
+      zones: ['zone-1'], // Changed from 'zone-a' to 'zone-1'
+      user: 'Max Mustermann'
+    },
+    {
+      id: '2',
+      start: '14:00',
+      end: '16:00',
+      type: 'desk',
+      desks: ['desk-1', 'desk-2'],
+      user: 'Anna Schmidt'
+    }
+  ])
 
   const resetSelection = React.useCallback(() => {
     setZones(new Set())
@@ -144,6 +172,9 @@ export default function Floorplan() {
       {/* Selection Mode Control */}
       <SelectionControl value={mode} onChange={handleModeChange} />
 
+      {/* Time Selection */}
+      <TimeSelector value={timeRange} onChange={setTimeRange} />
+
       {/* Floor Plan Visualization */}
       <div className="relative flex-1 overflow-hidden rounded-2xl border-2 border-zinc-200 bg-gradient-to-br from-zinc-50 to-zinc-100 p-2 shadow-lg dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-800">
         <FloorPlanSVG
@@ -156,6 +187,20 @@ export default function Floorplan() {
           className="h-full w-full"
         />
       </div>
+
+      {/* Timeline */}
+      <BookingTimeline 
+        bookings={bookings}
+        currentSelection={{
+          mode,
+          zones,
+          desks
+        }}
+        timeRange={timeRange}
+        onTimeSlotClick={(time) => {
+          setTimeRange(prev => ({ ...prev, start: time }))
+        }}
+      />
 
       {/* Footer with action button and info */}
       <footer className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
@@ -187,13 +232,12 @@ export default function Floorplan() {
           onClick={() => {
             const payload =
               mode === 'floor'
-                ? { type: 'floor' }
+                ? { type: 'floor', timeRange }
                 : mode === 'zone'
-                ? { type: 'zones', zones: Array.from(zones) }
-                : { type: 'desks', desks: Array.from(desks) }
+                ? { type: 'zones', zones: Array.from(zones), timeRange }
+                : { type: 'desks', desks: Array.from(desks), timeRange }
             
-            // Use toast instead of alert
-            showToast('Buchung erfolgreich! 🎉', 'success')
+            showToast(`Buchung von ${timeRange.start} bis ${timeRange.end} erfolgreich! 🎉`, 'success')
             console.log('Booking payload:', payload)
           }}
         >
