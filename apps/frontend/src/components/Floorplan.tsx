@@ -531,7 +531,7 @@ export default function Floorplan({
       <TimeSelector value={timeRange} onChange={onTimeRangeChange} />
 
       {/* Floor Plan Visualization */}
-      <div className="relative flex-1 overflow-hidden rounded-xl border-2 border-zinc-200 bg-linear-to-br from-zinc-50 to-zinc-100 p-1.5 shadow-sm dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-800">
+      <div className="relative flex-[2] min-h-[500px] overflow-hidden rounded-xl border-2 border-zinc-200 bg-linear-to-br from-zinc-50 to-zinc-100 p-1.5 shadow-sm dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-800">
         <FloorPlanSVG
           mode={mode}
           selectedZones={zones}

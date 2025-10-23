@@ -2,13 +2,16 @@
 
 import { useMemo, useState, useEffect } from 'react';
 
+type BookingStatus = 'full' | 'partial' | 'available'
+
 type CalendarProps = {
   variant?: 'card' | 'plain';
   selectedDate?: Date;
   onDateChange?: (date: Date) => void;
+  dayBookingStatus?: Map<string, BookingStatus>; // Map of 'YYYY-MM-DD' -> status
 };
 
-export function Calendar({ variant = 'card', selectedDate: externalSelectedDate, onDateChange }: CalendarProps) {
+export function Calendar({ variant = 'card', selectedDate: externalSelectedDate, onDateChange, dayBookingStatus }: CalendarProps) {
   const today = useMemo(() => new Date(), []);
   const [viewDate, setViewDate] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
@@ -38,11 +41,17 @@ export function Calendar({ variant = 'card', selectedDate: externalSelectedDate,
     const newDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
     onDateChange?.(newDate);
   };
+  
+  // Get booking status for a specific day
+  const getBookingStatus = (day: number): BookingStatus => {
+    const dateStr = `${year}-${String(monthIndex0 + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    return dayBookingStatus?.get(dateStr) || 'available'
+  }
 
-  const cells: Array<{ key: string; label: string; day: number | null; isToday?: boolean }> = [];
+  const cells: Array<{ key: string; label: string; day: number | null; isToday?: boolean; bookingStatus?: BookingStatus }> = [];
   for (let i = 0; i < offset; i += 1) cells.push({ key: `empty-${i}`, label: '', day: null });
   for (let d = 1; d <= daysInMonth; d += 1) {
-    cells.push({ key: `day-${d}`, label: String(d), day: d, isToday: isToday(d) });
+    cells.push({ key: `day-${d}`, label: String(d), day: d, isToday: isToday(d), bookingStatus: getBookingStatus(d) });
   }
 
   const containerClass =
@@ -92,44 +101,64 @@ export function Calendar({ variant = 'card', selectedDate: externalSelectedDate,
             {d}
           </div>
         ))}
-        {cells.map((c) => (
-          <button
-            key={c.key}
-            onClick={() => c.day && handleDateClick(c.day)}
-            disabled={!c.label}
-            className={
-              c.label
-                ? `group relative flex h-8 items-center justify-center rounded-lg text-xs font-medium transition-all ${
-                    c.isToday
-                      ? 'bg-linear-to-br from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30 hover:shadow-lg hover:shadow-blue-500/40'
-                      : isSelected(c.day!)
-                      ? 'bg-blue-100 text-blue-900 ring-2 ring-blue-500 dark:bg-blue-900/30 dark:text-blue-100'
-                      : 'text-zinc-800 hover:bg-zinc-100 hover:scale-105 dark:text-zinc-200 dark:hover:bg-zinc-800'
-                  }`
-                : 'h-8'
+        {cells.map((c) => {
+          // Determine background color based on booking status
+          const getBackgroundClass = () => {
+            if (!c.label) return 'h-8'
+            
+            if (c.isToday) {
+              return 'bg-linear-to-br from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30 hover:shadow-lg hover:shadow-blue-500/40'
             }
-          >
-            {c.label && (
-              <>
-                <span className="relative z-10">{c.label}</span>
-                {!c.isToday && !isSelected(c.day!) && (
-                  <div className="absolute inset-0 rounded-lg bg-linear-to-br from-blue-500/0 to-purple-500/0 opacity-0 transition-opacity group-hover:from-blue-500/10 group-hover:to-purple-500/10 group-hover:opacity-100" />
-                )}
-              </>
-            )}
-          </button>
-        ))}
+            
+            if (isSelected(c.day!)) {
+              return 'bg-blue-100 text-blue-900 ring-2 ring-blue-500 dark:bg-blue-900/30 dark:text-blue-100'
+            }
+            
+            // Apply booking status colors
+            if (c.bookingStatus === 'full') {
+              return 'bg-red-100 text-red-900 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-100 dark:hover:bg-red-900/40'
+            }
+            
+            if (c.bookingStatus === 'partial') {
+              return 'bg-yellow-100 text-yellow-900 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-100 dark:hover:bg-yellow-900/40'
+            }
+            
+            return 'text-zinc-800 hover:bg-zinc-100 hover:scale-105 dark:text-zinc-200 dark:hover:bg-zinc-800'
+          }
+          
+          return (
+            <button
+              key={c.key}
+              onClick={() => c.day && handleDateClick(c.day)}
+              disabled={!c.label}
+              className={`group relative flex h-8 items-center justify-center rounded-lg text-xs font-medium transition-all ${getBackgroundClass()}`}
+            >
+              {c.label && (
+                <>
+                  <span className="relative z-10">{c.label}</span>
+                  {!c.isToday && !isSelected(c.day!) && c.bookingStatus === 'available' && (
+                    <div className="absolute inset-0 rounded-lg bg-linear-to-br from-blue-500/0 to-purple-500/0 opacity-0 transition-opacity group-hover:from-blue-500/10 group-hover:to-purple-500/10 group-hover:opacity-100" />
+                  )}
+                </>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/* Legend */}
-      <div className="mt-3 flex items-center justify-center gap-3 border-t border-zinc-200/60 pt-2 dark:border-zinc-800/60">
-        <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-linear-to-br from-blue-500 to-blue-600"></div>
-          <span className="text-[10px] text-zinc-600 dark:text-zinc-400">Heute</span>
+      <div className="mt-3 flex items-center justify-center gap-2 border-t border-zinc-200/60 pt-2 dark:border-zinc-800/60">
+        <div className="flex items-center gap-1">
+          <div className="h-2 w-2 rounded-sm bg-red-200 dark:bg-red-900/50"></div>
+          <span className="text-[9px] text-zinc-600 dark:text-zinc-400">Voll</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-blue-100 ring-2 ring-blue-500 dark:bg-blue-900/30"></div>
-          <span className="text-[10px] text-zinc-600 dark:text-zinc-400">Ausgewählt</span>
+        <div className="flex items-center gap-1">
+          <div className="h-2 w-2 rounded-sm bg-yellow-200 dark:bg-yellow-900/50"></div>
+          <span className="text-[9px] text-zinc-600 dark:text-zinc-400">Teil</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="h-2 w-2 rounded-full bg-linear-to-br from-blue-500 to-blue-600"></div>
+          <span className="text-[9px] text-zinc-600 dark:text-zinc-400">Heute</span>
         </div>
       </div>
     </div>

@@ -21,7 +21,7 @@ export default function RootLayout({
         <AuthProvider>
         <ToastProvider>
           <Header />
-          <div className="h-[calc(100vh-3rem)] overflow-hidden">{children}</div>
+          <div className="h-[calc(100vh-4rem)] overflow-hidden">{children}</div>
         </ToastProvider>
         </AuthProvider>
       </body>

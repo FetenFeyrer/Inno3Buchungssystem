@@ -201,13 +201,13 @@ export default function FloorPlanSVG({
         {isFloorBooked && mode !== 'floor' && (
           <text
             x={VB_WIDTH / 2}
-            y={floorY - 20}
+            y={floorY - 25}
             textAnchor="middle"
-            fontSize={16}
-            fontWeight="700"
+            fontSize={28}
+            fontWeight="800"
             fill="#ef4444"
           >
-            🔒 Stockwerk gebucht {!isAdmin && '(Nur Admin)'}
+            Stockwerk gebucht {isAdmin && '(Überschreibbar)'}
           </text>
         )}
 
@@ -230,7 +230,7 @@ export default function FloorPlanSVG({
           const isBooked = bookedZones.has(id)
           const hasDesks = zoneHasDesks(id)
           const strokeProps = getZoneStroke(id, selected)
-          const zoneName = ['Terasse', 'Mitte', 'Balkon'][i]
+          const zoneName = ['Terrasse', 'Mitte', 'Balkon'][i]
 
           return (
             <g key={id} aria-label={`Bereich ${zoneName}`} tabIndex={mode === 'zone' ? 0 : -1}>
@@ -265,8 +265,8 @@ export default function FloorPlanSVG({
                   x={zx + zoneW / 2}
                   y={zoneY + 30}
                   textAnchor="middle"
-                  fontSize={14}
-                  fontWeight="700"
+                  fontSize={18}
+                  fontWeight="800"
                   fill="#ef4444"
                   pointerEvents="none"
                 >
