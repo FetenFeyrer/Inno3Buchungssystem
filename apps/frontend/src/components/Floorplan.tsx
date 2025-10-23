@@ -1,78 +1,205 @@
-'use client';
+'use client'
 
-type Area = {
-  id: string;
-  label: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  baseColor: string;
-  hoverColor: string;
-};
+import * as React from 'react'
+import FloorPlanSVG, { SelectionMode, ZoneId } from './FloorPlanSVG'
+import { useToast } from '@/components/Toast'
 
-const AREAS: Area[] = [
-  { id: 'balkon', label: 'Balkon', x: 8, y: 8, width: 84, height: 28, baseColor: '#e5e7eb', hoverColor: '#93c5fd' },
-  { id: 'mitte', label: 'Mitte', x: 8, y: 40, width: 84, height: 28, baseColor: '#e5e7eb', hoverColor: '#a7f3d0' },
-  { id: 'hinten', label: 'Hinten', x: 8, y: 72, width: 84, height: 20, baseColor: '#e5e7eb', hoverColor: '#fde68a' },
-];
+function SelectionControl({
+  value,
+  onChange,
+}: {
+  value: SelectionMode
+  onChange: (v: SelectionMode) => void
+}) {
+  const options: { value: SelectionMode; label: string; icon: string; description: string }[] = [
+    { value: 'floor', label: 'Gesamtes Stockwerk', icon: '🏢', description: 'Komplette Fläche' },
+    { value: 'zone', label: 'Teilbereiche', icon: '📐', description: 'Bis zu 3 Bereiche' },
+    { value: 'desk', label: 'Einzelplätze', icon: '💺', description: 'Spezifische Plätze' },
+  ]
 
-export default function Floorplan() {
   return (
-    <div className="w-full rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Grundriss (Demo)</h2>
-        <span className="text-sm text-zinc-500 dark:text-zinc-400">3 Bereiche</span>
-      </div>
-      <svg
-        viewBox="0 0 100 100"
-        className="h-72 w-full rounded-md bg-zinc-100 dark:bg-zinc-800"
-        role="img"
-        aria-label="Einfacher Grundriss in drei Bereiche"
-      >
-        <rect x="4" y="4" width="92" height="92" rx="2" ry="2" fill="#f4f4f5" stroke="#d4d4d8" strokeWidth="0.5" />
+    <div className="space-y-2">
+      <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+        Auswahlmodus
+      </label>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {options.map((opt) => {
+          const isActive = value === opt.value
+          return (
+            <button
+              key={opt.value}
+              onClick={() => onChange(opt.value)}
+              className={`
+                group relative overflow-hidden rounded-xl border-2 p-4 text-left transition-all
+                ${
+                  isActive
+                    ? 'border-blue-500 bg-blue-50 shadow-md dark:bg-blue-950/30'
+                    : 'border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-sm dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-zinc-600'
+                }
+              `}
+            >
+              {/* Radio indicator */}
+              <div className="absolute right-3 top-3">
+                <div
+                  className={`
+                  h-5 w-5 rounded-full border-2 transition-all
+                  ${
+                    isActive
+                      ? 'border-blue-500 bg-blue-500'
+                      : 'border-zinc-300 dark:border-zinc-600'
+                  }
+                `}
+                >
+                  {isActive && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="h-2 w-2 rounded-full bg-white" />
+                    </div>
+                  )}
+                </div>
+              </div>
 
-        {AREAS.map((a) => (
-          <g key={a.id}>
-            <rect
-              x={a.x}
-              y={a.y}
-              width={a.width}
-              height={a.height}
-              rx={1.5}
-              ry={1.5}
-              className="transition-colors"
-              style={{ fill: a.baseColor }}
-            >
-              <title>{a.label}</title>
-            </rect>
-            <rect
-              x={a.x}
-              y={a.y}
-              width={a.width}
-              height={a.height}
-              rx={1.5}
-              ry={1.5}
-              fill="transparent"
-              className="cursor-pointer"
-            />
-            <text
-              x={a.x + a.width / 2}
-              y={a.y + a.height / 2}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              className="select-none text-[3px] fill-zinc-700 dark:fill-zinc-200"
-            >
-              {a.label}
-            </text>
-            <style>{`
-              g:hover rect:first-of-type { fill: ${a.hoverColor}; }
-            `}</style>
-          </g>
-        ))}
-      </svg>
+              {/* Content */}
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">{opt.icon}</span>
+                <div className="flex-1 pr-6">
+                  <div
+                    className={`
+                    text-sm font-semibold transition-colors
+                    ${isActive ? 'text-blue-700 dark:text-blue-300' : 'text-zinc-800 dark:text-zinc-200'}
+                  `}
+                  >
+                    {opt.label}
+                  </div>
+                  <div
+                    className={`
+                    text-xs transition-colors
+                    ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400'}
+                  `}
+                  >
+                    {opt.description}
+                  </div>
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
     </div>
-  );
+  )
 }
 
+export default function Floorplan() {
+  const { showToast } = useToast()
+  const [mode, setMode] = React.useState<SelectionMode>('zone')
+  const [zones, setZones] = React.useState<Set<ZoneId>>(new Set())
+  const [desks, setDesks] = React.useState<Set<string>>(new Set())
 
+  const resetSelection = React.useCallback(() => {
+    setZones(new Set())
+    setDesks(new Set())
+  }, [])
+
+  const handleModeChange = (m: SelectionMode) => {
+    setMode(m)
+    resetSelection()
+  }
+
+  const onSelectFloor = () => {
+    resetSelection()
+  }
+
+  const onToggleZone = (id: ZoneId) => {
+    setZones((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+        // Auto-switch to floor mode if all 3 zones are selected
+        if (next.size === 3) {
+          setTimeout(() => {
+            setMode('floor')
+            resetSelection()
+          }, 300)
+        }
+      }
+      return next
+    })
+  }
+
+  const onToggleDesk = (id: string) => {
+    setDesks((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const hasSelection =
+    mode === 'floor' ? true : mode === 'zone' ? zones.size > 0 : desks.size > 0
+
+  return (
+    <section className="flex h-full flex-col gap-4">
+      {/* Selection Mode Control */}
+      <SelectionControl value={mode} onChange={handleModeChange} />
+
+      {/* Floor Plan Visualization */}
+      <div className="relative flex-1 overflow-hidden rounded-2xl border-2 border-zinc-200 bg-gradient-to-br from-zinc-50 to-zinc-100 p-2 shadow-lg dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-800">
+        <FloorPlanSVG
+          mode={mode}
+          selectedZones={zones}
+          selectedDesks={desks}
+          onSelectFloor={onSelectFloor}
+          onToggleZone={onToggleZone}
+          onToggleDesk={onToggleDesk}
+          className="h-full w-full"
+        />
+      </div>
+
+      {/* Footer with action button and info */}
+      <footer className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+        <div className="text-sm text-zinc-600 dark:text-zinc-400">
+          {mode === 'floor' && (
+            <span>✓ Gesamtes Stockwerk wird gebucht</span>
+          )}
+          {mode === 'zone' && zones.size === 0 && (
+            <span>Wähle bis zu 3 Bereiche aus</span>
+          )}
+          {mode === 'zone' && zones.size > 0 && (
+            <span className="font-medium text-blue-600 dark:text-blue-400">
+              {zones.size} {zones.size === 1 ? 'Bereich' : 'Bereiche'} ausgewählt
+              {zones.size === 3 && ' → Wechselt zu Gesamtfläche'}
+            </span>
+          )}
+          {mode === 'desk' && desks.size === 0 && (
+            <span>Wähle einzelne Arbeitsplätze aus</span>
+          )}
+          {mode === 'desk' && desks.size > 0 && (
+            <span className="font-medium text-blue-600 dark:text-blue-400">
+              {desks.size} {desks.size === 1 ? 'Platz' : 'Plätze'} ausgewählt
+            </span>
+          )}
+        </div>
+        <button
+          className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 disabled:hover:shadow-md"
+          disabled={!hasSelection}
+          onClick={() => {
+            const payload =
+              mode === 'floor'
+                ? { type: 'floor' }
+                : mode === 'zone'
+                ? { type: 'zones', zones: Array.from(zones) }
+                : { type: 'desks', desks: Array.from(desks) }
+            
+            // Use toast instead of alert
+            showToast('Buchung erfolgreich! 🎉', 'success')
+            console.log('Booking payload:', payload)
+          }}
+        >
+          Jetzt buchen
+        </button>
+      </footer>
+    </section>
+  )
+}
