@@ -5,10 +5,20 @@ import FloorPlanSVG, { SelectionMode, ZoneId } from './FloorPlanSVG'
 import { useToast } from '@/components/Toast'
 import { useAuth } from '@/contexts/AuthContext'
 import TimeSelector, { TimeRange } from './TimeSelector'
-import BookingTimeline, { Booking } from './BookingTimeline'
+import { Booking } from './BookingTimeline'
 
 type FloorplanProps = {
   selectedDate: Date
+  bookings: Booking[]
+  onBookingsChange: (bookings: Booking[]) => void
+  mode: SelectionMode
+  onModeChange: (mode: SelectionMode) => void
+  zones: Set<ZoneId>
+  onZonesChange: (zones: Set<ZoneId>) => void
+  desks: Set<string>
+  onDesksChange: (desks: Set<string>) => void
+  timeRange: TimeRange
+  onTimeRangeChange: (timeRange: TimeRange) => void
 }
 
 type Bookable = {
@@ -32,11 +42,11 @@ function SelectionControl({
   ]
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+    <div className="space-y-1.5">
+      <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
         Auswahlmodus
       </label>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
         {options.map((opt) => {
           const isActive = value === opt.value
           return (
@@ -44,19 +54,19 @@ function SelectionControl({
               key={opt.value}
               onClick={() => onChange(opt.value)}
               className={`
-                group relative overflow-hidden rounded-xl border-2 p-4 text-left transition-all
+                group relative overflow-hidden rounded-lg border-2 p-2 text-left transition-all
                 ${
                   isActive
-                    ? 'border-blue-500 bg-blue-50 shadow-md dark:bg-blue-950/30'
+                    ? 'border-blue-500 bg-blue-50 shadow-sm dark:bg-blue-950/30'
                     : 'border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-sm dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-zinc-600'
                 }
               `}
             >
               {/* Radio indicator */}
-              <div className="absolute right-3 top-3">
+              <div className="absolute right-2 top-2">
                 <div
                   className={`
-                  h-5 w-5 rounded-full border-2 transition-all
+                  h-3.5 w-3.5 rounded-full border-2 transition-all
                   ${
                     isActive
                       ? 'border-blue-500 bg-blue-500'
@@ -66,19 +76,19 @@ function SelectionControl({
                 >
                   {isActive && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="h-2 w-2 rounded-full bg-white" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-white" />
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Content */}
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">{opt.icon}</span>
-                <div className="flex-1 pr-6">
+              <div className="flex items-start gap-2">
+                <span className="text-lg">{opt.icon}</span>
+                <div className="flex-1 pr-5">
                   <div
                     className={`
-                    text-sm font-semibold transition-colors
+                    text-xs font-semibold transition-colors
                     ${isActive ? 'text-blue-700 dark:text-blue-300' : 'text-zinc-800 dark:text-zinc-200'}
                   `}
                   >
@@ -86,7 +96,7 @@ function SelectionControl({
                   </div>
                   <div
                     className={`
-                    text-xs transition-colors
+                    text-[10px] transition-colors
                     ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400'}
                   `}
                   >
@@ -102,21 +112,24 @@ function SelectionControl({
   )
 }
 
-export default function Floorplan({ selectedDate }: FloorplanProps) {
+export default function Floorplan({ 
+  selectedDate, 
+  bookings, 
+  onBookingsChange,
+  mode,
+  onModeChange,
+  zones,
+  onZonesChange,
+  desks,
+  onDesksChange,
+  timeRange,
+  onTimeRangeChange
+}: FloorplanProps) {
   const { showToast } = useToast()
   const { user } = useAuth()
   
-  const [mode, setMode] = React.useState<SelectionMode>('zone')
-  const [zones, setZones] = React.useState<Set<ZoneId>>(new Set())
-  const [desks, setDesks] = React.useState<Set<string>>(new Set())
-  const [timeRange, setTimeRange] = React.useState<TimeRange>({
-    start: '09:00',
-    end: '17:00'
-  })
-  
   // Data from API
   const [bookables, setBookables] = React.useState<Bookable[]>([])
-  const [bookings, setBookings] = React.useState<Booking[]>([])
   const [isBooking, setIsBooking] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(true)
 
@@ -163,6 +176,7 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
       const response = await fetch('/api/bookables')
       if (!response.ok) throw new Error('Failed to fetch bookables')
       const data = await response.json()
+      console.log('Fetched bookables:', data)
       setBookables(data)
     } catch (error) {
       console.error('Error fetching bookables:', error)
@@ -174,13 +188,15 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
 
   const fetchBookings = async (date: Date) => {
     try {
-      const dateStr = date.toISOString().split('T')[0]
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+            console.log('Fetching bookings for date:', dateStr)
       const response = await fetch(`/api/bookings?date=${dateStr}`)
       if (!response.ok) throw new Error('Failed to fetch bookings')
       const data = await response.json()
+      console.log('Raw bookings from API:', data)
       
       // Transform API bookings to timeline format
-      const transformedBookings: Booking[] = data.map((booking: any) => {
+      const transformedBookings = data.map((booking: any) => {
         const startTime = new Date(booking.start).toLocaleTimeString('de-DE', { 
           hour: '2-digit', 
           minute: '2-digit' 
@@ -193,9 +209,9 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
         // Map bookable to zone or desk
         if (booking.bookable.type === 'AREA') {
           const zoneMap: Record<string, ZoneId> = {
-            'Balkon': 'zone-1',
+            'Balkon': 'zone-3',
             'Mitte': 'zone-2',
-            'Fenster': 'zone-3',
+            'Fenster': 'zone-1',
           }
           return {
             id: String(booking.id),
@@ -206,14 +222,53 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
             user: booking.user.name
           }
         } else if (booking.bookable.type === 'PLACE') {
+          // Find the parent area to determine which zone this desk belongs to
+          const parentArea = bookables.find(b => b.id === booking.bookable.parentId)
+          
+          if (!parentArea) {
+            console.warn('Parent area not found for desk:', booking.bookable.name)
+            return null
+          }
+          
+          // Map DB area names to zone IDs
+          const areaToZoneMap: Record<string, ZoneId> = {
+            'Balkon': 'zone-3',
+            'Mitte': 'zone-2',
+            'Fenster': 'zone-1',
+          }
+          const zoneId = areaToZoneMap[parentArea.name]
+          
+          if (!zoneId || zoneId !== 'zone-1') {
+            // Only zone-1 has desks in the UI
+            console.warn('Desk not in zone-1, cannot display:', booking.bookable.name)
+            return null
+          }
+          
+          // Extract desk number from name (e.g., "Fenster - Platz 3" -> 3)
+          const deskNumMatch = booking.bookable.name.match(/Platz (\d+)/)
+          if (!deskNumMatch) {
+            console.warn('Could not extract desk number from:', booking.bookable.name)
+            return null
+          }
+          const deskNum = parseInt(deskNumMatch[1])
+          
+          // Calculate row and col from desk number (matching FloorPlanSVG layout)
+          const DESK_COLS = 5
+          const row = Math.floor((deskNum - 1) / DESK_COLS)
+          const col = (deskNum - 1) % DESK_COLS
+          
+          // Generate desk ID matching FloorPlanSVG format: desk-zone-1-row-col
+          const deskId = `desk-${zoneId}-${row}-${col}`
+          
           return {
             id: String(booking.id),
             start: startTime,
             end: endTime,
             type: 'desk',
-            desks: [`desk-${booking.bookable.id}`],
+            desks: [deskId],
             user: booking.user.name
           }
+        
         } else {
           return {
             id: String(booking.id),
@@ -223,9 +278,10 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
             user: booking.user.name
           }
         }
-      })
+      }).filter((booking: Booking | null): booking is Booking => booking !== null)
       
-      setBookings(transformedBookings)
+      console.log('Transformed bookings:', transformedBookings)
+      onBookingsChange(transformedBookings)
     } catch (error) {
       console.error('Error fetching bookings:', error)
       showToast('Fehler beim Laden der Buchungen', 'error')
@@ -275,9 +331,9 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
         if (floor) bookableIds = [floor.id]
       } else if (mode === 'zone') {
         const zoneMap: Record<string, string> = {
-          'zone-1': 'Balkon',
-          'zone-2': 'Mitte',
-          'zone-3': 'Fenster',
+          'zone-1': 'Fenster',   // UI "Terasse" (zone-1) -> DB "Fenster"
+          'zone-2': 'Mitte',     // UI "Mitte" (zone-2) -> DB "Mitte"
+          'zone-3': 'Balkon',    // UI "Balkon" (zone-3) -> DB "Balkon"
         }
         
         bookableIds = Array.from(zones)
@@ -289,10 +345,47 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
       } else if (mode === 'desk') {
         bookableIds = Array.from(desks)
           .map(deskId => {
-            const deskNumber = deskId.replace('desk-', '')
-            return bookables.find(b => 
-              b.type === 'PLACE' && b.name.includes(deskNumber)
-            )?.id
+            // Parse desk ID format: desk-zone-1-0-2 -> zone=zone-1, row=0, col=2
+            const parts = deskId.split('-')
+            if (parts.length !== 5 || parts[0] !== 'desk') {
+              console.warn('Invalid desk ID format:', deskId)
+              return undefined
+            }
+            
+            const zoneId = `${parts[1]}-${parts[2]}` as ZoneId  // "zone-1"
+            const row = parseInt(parts[3])
+            const col = parseInt(parts[4])
+            
+            // Calculate desk number (1-based): row 0, col 0 = desk 1
+            const DESK_COLS = 5
+            const deskNumber = row * DESK_COLS + col + 1
+            
+            // Map zone ID to DB area name
+            const zoneToAreaMap: Record<ZoneId, string> = {
+              'zone-1': 'Fenster',  // UI "Terasse" -> DB "Fenster"
+              'zone-2': 'Mitte',
+              'zone-3': 'Balkon',
+            }
+            const areaName = zoneToAreaMap[zoneId]
+            
+            if (!areaName) {
+              console.warn('Unknown zone ID:', zoneId)
+              return undefined
+            }
+            
+            // Find the bookable desk by exact name match
+            const deskName = `${areaName} - Platz ${deskNumber}`
+            const desk = bookables.find(b => 
+              b.type === 'PLACE' && b.name === deskName
+            )
+            
+            if (!desk) {
+              console.warn('Desk not found in bookables:', deskName)
+            } else {
+              console.log(`Mapped ${deskId} -> ${deskName} (ID: ${desk.id})`)
+            }
+            
+            return desk?.id
           })
           .filter((id): id is number => id !== undefined)
       }
@@ -301,6 +394,8 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
         showToast('Keine gültigen Buchungsziele gefunden', 'error')
         return
       }
+      
+      console.log('Creating booking with IDs:', bookableIds)
       
       const response = await fetch('/api/bookings', {
         method: 'POST',
@@ -312,8 +407,7 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
           bookableIds,
           start: timeRange.start,
           end: timeRange.end,
-          date: selectedDate.toISOString(),
-        }),
+          date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`,        }),
       })
       
       const data = await response.json()
@@ -351,12 +445,12 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
   }
 
   const resetSelection = React.useCallback(() => {
-    setZones(new Set())
-    setDesks(new Set())
-  }, [])
+    onZonesChange(new Set())
+    onDesksChange(new Set())
+  }, [onZonesChange, onDesksChange])
 
   const handleModeChange = (m: SelectionMode) => {
-    setMode(m)
+    onModeChange(m)
     resetSelection()
   }
 
@@ -376,22 +470,20 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
       return
     }
 
-    setZones((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-        // Auto-switch to floor mode if all 3 zones are selected
-        if (next.size === 3) {
-          setTimeout(() => {
-            setMode('floor')
-            resetSelection()
-          }, 300)
-        }
+    const next = new Set(zones)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.add(id)
+      // Auto-switch to floor mode if all 3 zones are selected
+      if (next.size === 3) {
+        setTimeout(() => {
+          onModeChange('floor')
+          resetSelection()
+        }, 300)
       }
-      return next
-    })
+    }
+    onZonesChange(next)
   }
 
   const onToggleDesk = (id: string) => {
@@ -401,12 +493,10 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
       return
     }
 
-    setDesks((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    const next = new Set(desks)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    onDesksChange(next)
   }
 
   const hasSelection =
@@ -424,11 +514,11 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
   }
 
   return (
-    <section className="flex h-full flex-col gap-4">
+    <section className="flex h-full flex-col gap-2">
       {/* Admin Badge */}
       {user?.role === 'ADMIN' && (
-        <div className="rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 px-4 py-2 dark:from-amber-950/30 dark:to-orange-950/30 dark:border-amber-800">
-          <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+        <div className="rounded-md bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 px-2.5 py-1.5 dark:from-amber-950/30 dark:to-orange-950/30 dark:border-amber-800">
+          <p className="text-[10px] font-semibold text-amber-800 dark:text-amber-300">
             👑 Admin-Modus: Du kannst bereits gebuchte Bereiche überschreiben
           </p>
         </div>
@@ -438,10 +528,10 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
       <SelectionControl value={mode} onChange={handleModeChange} />
 
       {/* Time Selection */}
-      <TimeSelector value={timeRange} onChange={setTimeRange} />
+      <TimeSelector value={timeRange} onChange={onTimeRangeChange} />
 
       {/* Floor Plan Visualization */}
-      <div className="relative flex-1 overflow-hidden rounded-2xl border-2 border-zinc-200 bg-gradient-to-br from-zinc-50 to-zinc-100 p-2 shadow-lg dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-800">
+      <div className="relative flex-1 overflow-hidden rounded-xl border-2 border-zinc-200 bg-linear-to-br from-zinc-50 to-zinc-100 p-1.5 shadow-sm dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-800">
         <FloorPlanSVG
           mode={mode}
           selectedZones={zones}
@@ -457,23 +547,9 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
         />
       </div>
 
-      {/* Timeline */}
-      <BookingTimeline 
-        bookings={bookings}
-        currentSelection={{
-          mode,
-          zones,
-          desks
-        }}
-        timeRange={timeRange}
-        onTimeSlotClick={(time) => {
-          setTimeRange(prev => ({ ...prev, start: time }))
-        }}
-      />
-
       {/* Footer with action button and info */}
-      <footer className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
-        <div className="text-sm text-zinc-600 dark:text-zinc-400">
+      <footer className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+        <div className="text-xs text-zinc-600 dark:text-zinc-400">
           {mode === 'floor' && (
             <span>✓ Gesamtes Stockwerk wird gebucht</span>
           )}
@@ -496,7 +572,7 @@ export default function Floorplan({ selectedDate }: FloorplanProps) {
           )}
         </div>
         <button
-          className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 disabled:hover:shadow-md"
+          className="rounded-md bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 disabled:hover:shadow-sm"
           disabled={!hasSelection || isBooking || !user}
           onClick={handleBooking}
         >

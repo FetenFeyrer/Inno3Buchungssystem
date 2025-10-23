@@ -40,15 +40,20 @@ const zoneXs = [
   floorX + zoneGap + (zoneW + zoneGap) * 2
 ] as const
 
-// Desk layout
-const DESK_ROWS = 4
-const DESK_COLS = 5
+// Desk layout - ONLY in zone-1 (Terrasse area)
+const DESK_ROWS = 2  // 2 rows
+const DESK_COLS = 5  // 5 columns = 10 desks total
 const DESK_W = 50
 const DESK_H = 40
 const DESK_GAP = 20
 
 function zoneIdByIndex(i: number): ZoneId {
   return (['zone-1', 'zone-2', 'zone-3'] as const)[i]
+}
+
+// Zone has desks only if it's zone-1
+function zoneHasDesks(zoneId: ZoneId): boolean {
+  return zoneId === 'zone-1'
 }
 
 export default function FloorPlanSVG({
@@ -165,7 +170,7 @@ export default function FloorPlanSVG({
           opacity={0.5}
           transform={`rotate(-90 ${VB_WIDTH - 100}, ${floorY + floorH / 2})`}
         >
-          Balkon
+          Terasse
         </text>
 
         {/* Main floor rectangle (interior - selectable area) */}
@@ -223,8 +228,9 @@ export default function FloorPlanSVG({
           const id = zoneIdByIndex(i)
           const selected = selectedZones.has(id)
           const isBooked = bookedZones.has(id)
+          const hasDesks = zoneHasDesks(id)
           const strokeProps = getZoneStroke(id, selected)
-          const zoneName = ['Balkon', 'Mitte', 'Fenster'][i]
+          const zoneName = ['Terasse', 'Mitte', 'Balkon'][i]
 
           return (
             <g key={id} aria-label={`Bereich ${zoneName}`} tabIndex={mode === 'zone' ? 0 : -1}>
@@ -281,7 +287,7 @@ export default function FloorPlanSVG({
                 {zoneName}
               </text>
 
-              {/* Desk count */}
+              {/* Desk count or zone-only info */}
               {mode !== 'desk' && (
                 <text
                   x={zx + zoneW / 2}
@@ -291,25 +297,26 @@ export default function FloorPlanSVG({
                   fill={selected ? 'white' : '#a1a1aa'}
                   pointerEvents="none"
                 >
-                  {DESK_ROWS * DESK_COLS} Arbeitsplätze
+                  {hasDesks ? `${DESK_ROWS * DESK_COLS} Arbeitsplätze` : 'Nur als Ganzes buchbar'}
                 </text>
               )}
 
-              {/* Desk grid */}
-              {mode === 'desk' && (
+              {/* Desk grid - ONLY for zone-1 */}
+              {mode === 'desk' && hasDesks && (
                 <g>
                   {Array.from({ length: DESK_ROWS }).map((_, r) =>
                     Array.from({ length: DESK_COLS }).map((__, c) => {
                       const totalWidth = DESK_COLS * DESK_W + (DESK_COLS - 1) * DESK_GAP
                       const totalHeight = DESK_ROWS * DESK_H + (DESK_ROWS - 1) * DESK_GAP
                       const startX = zx + (zoneW - totalWidth) / 2
-                      const startY = zoneY + 80
+                      const startY = zoneY + (zoneH - totalHeight) / 2
 
                       const dx = startX + c * (DESK_W + DESK_GAP)
                       const dy = startY + r * (DESK_H + DESK_GAP)
                       const deskId = `desk-${id}-${r}-${c}`
+                      const deskNumber = r * DESK_COLS + c + 1
                       const isSel = selectedDesks.has(deskId)
-                      const isBooked = bookedDesks.has(deskId)
+                      const isDeskBooked = bookedDesks.has(deskId)
                       const strokeProps = getDeskStroke(deskId, isSel)
 
                       return (
@@ -331,19 +338,33 @@ export default function FloorPlanSVG({
                             tabIndex={0}
                             style={{
                               filter: isSel 
-                                ? `drop-shadow(0 0 12px ${isBooked && !isAdmin ? 'rgba(239, 68, 68, 0.5)' : 'rgba(59, 130, 246, 0.5)'})` 
-                                : isBooked
+                                ? `drop-shadow(0 0 12px ${isDeskBooked && !isAdmin ? 'rgba(239, 68, 68, 0.5)' : 'rgba(59, 130, 246, 0.5)'})` 
+                                : isDeskBooked
                                 ? 'drop-shadow(0 1px 3px rgba(239, 68, 68, 0.4))'
                                 : 'none',
                               transition: 'all 0.2s ease',
                             }}
                           />
+                          
+                          {/* Desk number */}
+                          <text
+                            x={dx + DESK_W / 2}
+                            y={dy + DESK_H / 2 - 5}
+                            textAnchor="middle"
+                            fontSize={12}
+                            fontWeight="600"
+                            fill={isSel ? 'white' : isDeskBooked ? '#ef4444' : '#71717a'}
+                            pointerEvents="none"
+                          >
+                            #{deskNumber}
+                          </text>
+                          
                           {isSel && (
                             <text
                               x={dx + DESK_W / 2}
-                              y={dy + DESK_H / 2 + 7}
+                              y={dy + DESK_H / 2 + 12}
                               textAnchor="middle"
-                              fontSize={20}
+                              fontSize={18}
                               fontWeight="700"
                               fill="white"
                               pointerEvents="none"
@@ -351,12 +372,12 @@ export default function FloorPlanSVG({
                               ✓
                             </text>
                           )}
-                          {isBooked && !isSel && (
+                          {isDeskBooked && !isSel && (
                             <text
                               x={dx + DESK_W / 2}
-                              y={dy + DESK_H / 2 + 7}
+                              y={dy + DESK_H / 2 + 12}
                               textAnchor="middle"
-                              fontSize={18}
+                              fontSize={16}
                               fontWeight="700"
                               fill="#ef4444"
                               pointerEvents="none"
@@ -369,6 +390,20 @@ export default function FloorPlanSVG({
                     })
                   )}
                 </g>
+              )}
+
+              {/* Message for zones without desks in desk mode */}
+              {mode === 'desk' && !hasDesks && (
+                <text
+                  x={zx + zoneW / 2}
+                  y={zoneY + zoneH / 2}
+                  textAnchor="middle"
+                  fontSize={16}
+                  fill="#a1a1aa"
+                  pointerEvents="none"
+                >
+                  Keine Einzelplätze
+                </text>
               )}
             </g>
           )

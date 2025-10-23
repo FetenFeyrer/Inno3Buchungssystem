@@ -79,34 +79,34 @@ export default function BookingTimeline({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+        <h3 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
           Zeitstrahl - Belegung
         </h3>
-        <div className="flex gap-3 text-xs">
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-sm bg-green-400" />
+        <div className="flex gap-2 text-[10px]">
+          <div className="flex items-center gap-1">
+            <div className="h-2 w-2 rounded-sm bg-green-400" />
             <span className="text-zinc-600 dark:text-zinc-400">Verfügbar</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-sm bg-orange-400" />
+          <div className="flex items-center gap-1">
+            <div className="h-2 w-2 rounded-sm bg-orange-400" />
             <span className="text-zinc-600 dark:text-zinc-400">Teilweise</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-sm bg-red-400" />
+          <div className="flex items-center gap-1">
+            <div className="h-2 w-2 rounded-sm bg-red-400" />
             <span className="text-zinc-600 dark:text-zinc-400">Belegt</span>
           </div>
         </div>
       </div>
 
-      <div className="rounded-xl border-2 border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+      <div className="rounded-lg border-2 border-zinc-200 bg-white p-2.5 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
         {/* Time Labels */}
-        <div className="relative mb-4">
+        <div className="relative mb-2">
           <div className="flex justify-between">
             {hours.map((hour) => (
               <div key={hour} className="flex flex-col items-center" style={{ width: '9.09%' }}>
-                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">
                   {hour}:00
                 </span>
               </div>
@@ -115,7 +115,7 @@ export default function BookingTimeline({
         </div>
 
         {/* Availability Bar */}
-        <div className="relative mb-6 h-8 rounded-lg overflow-hidden border border-zinc-300 dark:border-zinc-600">
+        <div className="relative mb-3 h-6 rounded-md overflow-hidden border border-zinc-300 dark:border-zinc-600">
           <div className="flex h-full">
             {hours.map((hour) => {
               const status = getTimeSlotAvailability(hour)
@@ -145,7 +145,7 @@ export default function BookingTimeline({
               }}
             >
               <div className="flex h-full items-center justify-center">
-                <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300">
                   Auswahl
                 </span>
               </div>
@@ -154,22 +154,22 @@ export default function BookingTimeline({
         </div>
 
         {/* Bookings */}
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+        <div className="space-y-1.5">
+          <h4 className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-400">
             Bestehende Buchungen
           </h4>
           {bookings.length === 0 ? (
-            <p className="text-xs text-zinc-500 dark:text-zinc-500 italic py-2">
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-500 italic py-1">
               Keine Buchungen für diesen Tag
             </p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {bookings.map((booking) => {
                 const width = timeToPosition(booking.end) - timeToPosition(booking.start)
                 const left = timeToPosition(booking.start)
                 
                 return (
-                  <div key={booking.id} className="relative h-10">
+                  <div key={booking.id} className="relative h-7">
                     <div
                       className={`absolute h-full rounded-md border-2 shadow-sm transition-all hover:shadow-md ${getBookingColor(booking)} border-zinc-300 dark:border-zinc-600`}
                       style={{
@@ -177,11 +177,11 @@ export default function BookingTimeline({
                         width: `${width}%`,
                       }}
                     >
-                      <div className="flex h-full items-center justify-between px-2">
-                        <span className="text-xs font-semibold text-white truncate">
+                      <div className="flex h-full items-center justify-between px-1.5">
+                        <span className="text-[10px] font-semibold text-white truncate">
                           {getBookingLabel(booking)}
                         </span>
-                        <span className="text-xs text-white/90">
+                        <span className="text-[10px] text-white/90">
                           {booking.start} - {booking.end}
                         </span>
                       </div>
