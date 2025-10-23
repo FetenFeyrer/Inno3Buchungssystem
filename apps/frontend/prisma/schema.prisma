@@ -1,0 +1,57 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int       @id @default(autoincrement())
+  name     String
+  email    String    @unique
+  role     Role      @default(INTERNE)
+  bookings Booking[]
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  INTERNE
+  INNOTRACK
+}
+
+model Booking {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  bookableId Int
+  start      DateTime
+  end        DateTime
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookable   Bookable  @relation(fields: [bookableId], references: [id], onDelete: Cascade)
+  
+  @@index([bookableId, start, end])
+  @@index([userId])
+}
+
+model Bookable {
+  id       Int            @id @default(autoincrement())
+  name     String
+  type     BookableType
+  parentId Int?
+  parent   Bookable?      @relation("BookableHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children Bookable[]     @relation("BookableHierarchy")
+  bookings Booking[]
+  
+  @@index([parentId])
+  @@index([type])
+}
+
+enum BookableType {
+  FLOOR
+  AREA
+  PLACE
+}

@@ -1,24 +1,17 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-
-function getDaysInMonth(year: number, monthIndex0: number): number {
-  return new Date(year, monthIndex0 + 1, 0).getDate();
-}
-
-function getMondayFirstDayIndex(date: Date): number {
-  const sundayFirst = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  return (sundayFirst + 6) % 7;
-}
+import { useMemo, useState, useEffect } from 'react';
 
 type CalendarProps = {
   variant?: 'card' | 'plain';
+  selectedDate?: Date;
+  onDateChange?: (date: Date) => void;
 };
 
-export function Calendar({ variant = 'card' }: CalendarProps) {
+export function Calendar({ variant = 'card', selectedDate: externalSelectedDate, onDateChange }: CalendarProps) {
   const today = useMemo(() => new Date(), []);
   const [viewDate, setViewDate] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
-  const [selectedDate, setSelectedDate] = useState<number | null>(today.getDate());
+  const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
 
   const year = viewDate.getFullYear();
   const monthIndex0 = viewDate.getMonth();
@@ -26,7 +19,7 @@ export function Calendar({ variant = 'card' }: CalendarProps) {
   const offset = getMondayFirstDayIndex(viewDate);
   const isToday = (d: number) =>
     today.getFullYear() === year && today.getMonth() === monthIndex0 && today.getDate() === d;
-  const isSelected = (d: number) => selectedDate === d && today.getMonth() === monthIndex0;
+  const isSelected = (d: number) => selectedDay === d && viewDate.getMonth() === monthIndex0 && viewDate.getFullYear() === year;
 
   const daysOfWeek = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
   const monthFormatter = useMemo(
@@ -39,6 +32,12 @@ export function Calendar({ variant = 'card' }: CalendarProps) {
     setViewDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
   const nextMonth = () =>
     setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+
+  const handleDateClick = (day: number) => {
+    setSelectedDay(day);
+    const newDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+    onDateChange?.(newDate);
+  };
 
   const cells: Array<{ key: string; label: string; day: number | null; isToday?: boolean }> = [];
   for (let i = 0; i < offset; i += 1) cells.push({ key: `empty-${i}`, label: '', day: null });
@@ -53,7 +52,7 @@ export function Calendar({ variant = 'card' }: CalendarProps) {
 
   return (
     <div className={containerClass}>
-      {/* Header */}
+      {/* ... existing header code ... */}
       <div className="mb-6">
         <div className="mb-3 flex items-center justify-between">
           <button
@@ -79,7 +78,6 @@ export function Calendar({ variant = 'card' }: CalendarProps) {
           </button>
         </div>
         
-        {/* Quick date info */}
         <div className="rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-3 dark:from-blue-950/30 dark:to-indigo-950/30">
           <p className="text-xs font-medium text-blue-900 dark:text-blue-100">
             Heute: {today.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -97,7 +95,7 @@ export function Calendar({ variant = 'card' }: CalendarProps) {
         {cells.map((c) => (
           <button
             key={c.key}
-            onClick={() => c.day && setSelectedDate(c.day)}
+            onClick={() => c.day && handleDateClick(c.day)}
             disabled={!c.label}
             className={
               c.label
@@ -136,6 +134,16 @@ export function Calendar({ variant = 'card' }: CalendarProps) {
       </div>
     </div>
   );
+}
+
+// Keep these helper functions
+function getDaysInMonth(year: number, monthIndex0: number): number {
+  return new Date(year, monthIndex0 + 1, 0).getDate();
+}
+
+function getMondayFirstDayIndex(date: Date): number {
+  const sundayFirst = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  return (sundayFirst + 6) % 7;
 }
 
 export default Calendar;

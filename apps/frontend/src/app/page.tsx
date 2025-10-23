@@ -6,6 +6,7 @@ import Floorplan from '@/components/Floorplan'
 
 export default function Page() {
   const [mounted, setMounted] = React.useState(false)
+  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date())
 
   React.useEffect(() => {
     setMounted(true)
@@ -31,7 +32,10 @@ export default function Page() {
             mounted ? 'translate-x-0 opacity-100' : '-translate-x-4 opacity-0'
           }`}
         >
-          <Calendar />
+          <Calendar 
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+          />
           
           {/* Additional Info Card */}
           <div className="mt-6 rounded-2xl border border-zinc-200/60 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-lg dark:border-zinc-800/60 dark:from-zinc-900/90 dark:to-zinc-900/50">
@@ -64,7 +68,7 @@ export default function Page() {
             mounted ? 'translate-x-0 opacity-100' : 'translate-x-4 opacity-0'
           }`}
         >
-          <Floorplan />
+          <Floorplan selectedDate={selectedDate} />
         </div>
 
         {/* Right Column – Statistics */}
@@ -80,7 +84,7 @@ export default function Page() {
                 Übersicht
               </h3>
               <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                Aktuelle Statistiken
+                {selectedDate.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
             </div>
 

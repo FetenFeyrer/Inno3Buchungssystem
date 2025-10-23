@@ -10,6 +10,10 @@ export type FloorPlanSVGProps = {
   mode: SelectionMode
   selectedZones: Set<ZoneId>
   selectedDesks: Set<string>
+  bookedZones: Set<ZoneId>
+  bookedDesks: Set<string>
+  isFloorBooked: boolean
+  isAdmin?: boolean
   onSelectFloor: () => void
   onToggleZone: (id: ZoneId) => void
   onToggleDesk: (id: string) => void
@@ -51,11 +55,72 @@ export default function FloorPlanSVG({
   mode,
   selectedZones,
   selectedDesks,
+  bookedZones,
+  bookedDesks,
+  isFloorBooked,
+  isAdmin,
   onSelectFloor,
   onToggleZone,
   onToggleDesk,
   className,
 }: FloorPlanSVGProps) {
+  
+  const getZoneColor = (zoneId: ZoneId, isSelected: boolean) => {
+    const isBooked = bookedZones.has(zoneId)
+    
+    if (isSelected) {
+      return isBooked && !isAdmin ? '#ef4444' : '#3b82f6' // red if booked, blue if selected
+    }
+    
+    if (isBooked) {
+      return 'white' // Keep white background
+    }
+    
+    return 'white'
+  }
+
+  const getZoneStroke = (zoneId: ZoneId, isSelected: boolean) => {
+    const isBooked = bookedZones.has(zoneId)
+    
+    if (isBooked && !isSelected) {
+      return { stroke: '#ef4444', strokeWidth: 3 }
+    }
+    
+    if (isSelected) {
+      return { stroke: 'none', strokeWidth: 0 }
+    }
+    
+    return { stroke: '#e5e7eb', strokeWidth: 2 }
+  }
+
+  const getDeskColor = (deskId: string, isSelected: boolean) => {
+    const isBooked = bookedDesks.has(deskId)
+    
+    if (isSelected) {
+      return isBooked && !isAdmin ? '#ef4444' : '#3b82f6'
+    }
+    
+    if (isBooked) {
+      return '#fecaca' // Light red for booked
+    }
+    
+    return '#f4f4f5'
+  }
+
+  const getDeskStroke = (deskId: string, isSelected: boolean) => {
+    const isBooked = bookedDesks.has(deskId)
+    
+    if (isBooked && !isSelected) {
+      return { stroke: '#ef4444', strokeWidth: 2 }
+    }
+    
+    if (isSelected) {
+      return { stroke: 'none', strokeWidth: 0 }
+    }
+    
+    return { stroke: '#e5e7eb', strokeWidth: 1 }
+  }
+
   return (
     <div className={clsx('relative select-none', className)}>
       <svg
@@ -109,8 +174,10 @@ export default function FloorPlanSVG({
           y={floorY}
           width={floorW}
           height={floorH}
-          fill={mode === 'floor' ? '#3b82f6' : 'transparent'}
+          fill={mode === 'floor' ? (isFloorBooked && !isAdmin ? '#ef4444' : '#3b82f6') : 'transparent'}
           fillOpacity={mode === 'floor' ? 0.15 : 0}
+          stroke={isFloorBooked && mode !== 'floor' ? '#ef4444' : 'none'}
+          strokeWidth={isFloorBooked && mode !== 'floor' ? 4 : 0}
           rx={20}
           cursor={mode === 'floor' ? 'pointer' : 'default'}
           onClick={() => mode === 'floor' && onSelectFloor()}
@@ -119,11 +186,25 @@ export default function FloorPlanSVG({
           }}
           style={{
             filter: mode === 'floor' 
-              ? 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.6))' 
+              ? `drop-shadow(0 0 20px ${isFloorBooked && !isAdmin ? 'rgba(239, 68, 68, 0.6)' : 'rgba(59, 130, 246, 0.6)'})` 
               : 'none',
             transition: 'all 0.3s ease',
           }}
         />
+
+        {/* Floor booked indicator */}
+        {isFloorBooked && mode !== 'floor' && (
+          <text
+            x={VB_WIDTH / 2}
+            y={floorY - 20}
+            textAnchor="middle"
+            fontSize={16}
+            fontWeight="700"
+            fill="#ef4444"
+          >
+            🔒 Stockwerk gebucht {!isAdmin && '(Nur Admin)'}
+          </text>
+        )}
 
         {/* Title */}
         <text
@@ -141,18 +222,21 @@ export default function FloorPlanSVG({
         {zoneXs.map((zx, i) => {
           const id = zoneIdByIndex(i)
           const selected = selectedZones.has(id)
+          const isBooked = bookedZones.has(id)
+          const strokeProps = getZoneStroke(id, selected)
+          const zoneName = ['Balkon', 'Mitte', 'Fenster'][i]
 
           return (
-            <g key={id} aria-label={`Bereich ${i + 1}`} tabIndex={mode === 'zone' ? 0 : -1}>
+            <g key={id} aria-label={`Bereich ${zoneName}`} tabIndex={mode === 'zone' ? 0 : -1}>
               {/* Zone card */}
               <rect
                 x={zx}
                 y={zoneY}
                 width={zoneW}
                 height={zoneH}
-                fill="white"
-                stroke={selected ? 'none' : '#e5e7eb'}
-                strokeWidth={selected ? 0 : 2}
+                fill={getZoneColor(id, selected)}
+                stroke={strokeProps.stroke}
+                strokeWidth={strokeProps.strokeWidth}
                 rx={16}
                 cursor={mode === 'zone' ? 'pointer' : 'default'}
                 onClick={() => mode === 'zone' && onToggleZone(id)}
@@ -161,23 +245,40 @@ export default function FloorPlanSVG({
                 }}
                 style={{
                   filter: selected 
-                    ? 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.6))' 
+                    ? `drop-shadow(0 0 20px ${isBooked && !isAdmin ? 'rgba(239, 68, 68, 0.6)' : 'rgba(59, 130, 246, 0.6)'})` 
+                    : isBooked 
+                    ? 'drop-shadow(0 2px 4px rgba(239, 68, 68, 0.3))'
                     : 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05))',
                   transition: 'all 0.3s ease',
                 }}
               />
 
+              {/* Booked indicator */}
+              {isBooked && !selected && (
+                <text
+                  x={zx + zoneW / 2}
+                  y={zoneY + 30}
+                  textAnchor="middle"
+                  fontSize={14}
+                  fontWeight="700"
+                  fill="#ef4444"
+                  pointerEvents="none"
+                >
+                  🔒 {isAdmin ? 'Gebucht (Override möglich)' : 'Gebucht'}
+                </text>
+              )}
+
               {/* Zone label */}
               <text
                 x={zx + zoneW / 2}
-                y={zoneY + 45}
+                y={zoneY + (isBooked && !selected ? 55 : 45)}
                 textAnchor="middle"
                 fontSize={20}
                 fontWeight="700"
-                fill={selected ? '#3b82f6' : '#71717a'}
+                fill={selected ? (isBooked && !isAdmin ? 'white' : 'white') : isBooked ? '#ef4444' : '#71717a'}
                 pointerEvents="none"
               >
-                Bereich {i + 1}
+                {zoneName}
               </text>
 
               {/* Desk count */}
@@ -187,7 +288,7 @@ export default function FloorPlanSVG({
                   y={zoneY + zoneH - 35}
                   textAnchor="middle"
                   fontSize={14}
-                  fill="#a1a1aa"
+                  fill={selected ? 'white' : '#a1a1aa'}
                   pointerEvents="none"
                 >
                   {DESK_ROWS * DESK_COLS} Arbeitsplätze
@@ -208,6 +309,8 @@ export default function FloorPlanSVG({
                       const dy = startY + r * (DESK_H + DESK_GAP)
                       const deskId = `desk-${id}-${r}-${c}`
                       const isSel = selectedDesks.has(deskId)
+                      const isBooked = bookedDesks.has(deskId)
+                      const strokeProps = getDeskStroke(deskId, isSel)
 
                       return (
                         <g key={deskId}>
@@ -217,9 +320,9 @@ export default function FloorPlanSVG({
                             width={DESK_W}
                             height={DESK_H}
                             rx={8}
-                            fill={isSel ? '#3b82f6' : '#f4f4f5'}
-                            stroke={isSel ? 'none' : '#e5e7eb'}
-                            strokeWidth={isSel ? 0 : 1}
+                            fill={getDeskColor(deskId, isSel)}
+                            stroke={strokeProps.stroke}
+                            strokeWidth={strokeProps.strokeWidth}
                             cursor="pointer"
                             onClick={() => onToggleDesk(deskId)}
                             onKeyDown={(e) => {
@@ -228,7 +331,9 @@ export default function FloorPlanSVG({
                             tabIndex={0}
                             style={{
                               filter: isSel 
-                                ? 'drop-shadow(0 0 12px rgba(59, 130, 246, 0.5))' 
+                                ? `drop-shadow(0 0 12px ${isBooked && !isAdmin ? 'rgba(239, 68, 68, 0.5)' : 'rgba(59, 130, 246, 0.5)'})` 
+                                : isBooked
+                                ? 'drop-shadow(0 1px 3px rgba(239, 68, 68, 0.4))'
                                 : 'none',
                               transition: 'all 0.2s ease',
                             }}
@@ -246,6 +351,19 @@ export default function FloorPlanSVG({
                               ✓
                             </text>
                           )}
+                          {isBooked && !isSel && (
+                            <text
+                              x={dx + DESK_W / 2}
+                              y={dy + DESK_H / 2 + 7}
+                              textAnchor="middle"
+                              fontSize={18}
+                              fontWeight="700"
+                              fill="#ef4444"
+                              pointerEvents="none"
+                            >
+                              🔒
+                            </text>
+                          )}
                         </g>
                       )
                     })
@@ -256,6 +374,25 @@ export default function FloorPlanSVG({
           )
         })}
       </svg>
+
+      {/* Legend */}
+      <div className="absolute bottom-4 left-4 rounded-lg bg-white/90 p-3 shadow-lg backdrop-blur-sm dark:bg-zinc-900/90">
+        <div className="flex gap-4 text-xs">
+          <div className="flex items-center gap-1.5">
+            <div className="h-4 w-4 rounded border-2 border-blue-500 bg-blue-500" />
+            <span className="text-zinc-700 dark:text-zinc-300">Ausgewählt</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-4 w-4 rounded border-2 border-red-500 bg-red-200" />
+            <span className="text-zinc-700 dark:text-zinc-300">Gebucht</span>
+          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-amber-600 dark:text-amber-400 font-semibold">👑 Admin-Override aktiv</span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
